@@ -17,7 +17,7 @@ trigger:
 name: $(Date:yyyy).$(Date:MM).$(Date:dd)$(Rev:.r)
 
 variables:
-  Solution.Name: 'MovieSolution'
+  Solution.Name: 'BookSolution'
   Client.Id: 'af1d092b-d37e-4534-b948-09798da38ad4'
   Test.Connection.String: 'AuthType=ClientSecret;ClientId=$(Client.Id);ClientSecret=$(Client.Secret);url=https://orge286f072.crm11.dynamics.com'
   UAT.Connection.String: 'AuthType=ClientSecret;ClientId=$(Client.Id);ClientSecret=$(Client.Secret);url=https://orgb76bb76a.crm11.dynamics.com'
@@ -40,9 +40,9 @@ stages:
           buildVersionToDownload: 'latest'
           itemPattern: '**/*.zip'
           targetPath: '$(Build.ArtifactStagingDirectory)'
-      - publish: '$(Build.ArtifactStagingDirectory)'
+      - publish: '$(Build.ArtifactStagingDirectory)\$(Solution.Name)'
         displayName: 'Publish Pipeline Artifact'
-        artifact: Release
+        artifact: $(Solution.Name)
 
   - stage: Test
     dependsOn: Artifact
@@ -60,7 +60,7 @@ stages:
                   displayName: 'Import Solution'
                   inputs:
                     crmConnectionString: '$(Test.Connection.String)'
-                    solutionFile: '$(Pipeline.Workspace)\Release\$(Solution.Name)\$(Solution.Name)_managed.zip'
+                    solutionFile: '$(Pipeline.Workspace)\$(Solution.Name)\$(Solution.Name)_managed.zip'
                     publishWorkflows: true
 
   - stage: UAT
@@ -79,5 +79,5 @@ stages:
                   displayName: 'Import Solution'
                   inputs:
                     crmConnectionString: '$(UAT.Connection.String)'
-                    solutionFile: '$(Pipeline.Workspace)\Release\$(Solution.Name)\$(Solution.Name)_managed.zip'
+                    solutionFile: '$(Pipeline.Workspace)\$(Solution.Name)\$(Solution.Name)_managed.zip'
                     publishWorkflows: true
