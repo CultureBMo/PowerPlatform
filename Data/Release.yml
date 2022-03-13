@@ -1,0 +1,80 @@
+# Deployment pipeline
+# ###################
+# Make sure you:
+#   1) Update the YAML variables below
+#   2) Update the Artifact stage to download from the correct CI pipeline
+#   3) In Variables create one for Client.Secret and check "keep it secret"
+#   4) In Settings tick "Automatically link work items included in this run"
+
+trigger:
+  branches:
+    include:
+    - main
+  paths:
+    exclude:
+    - '*.yml'
+    - '*.md'
+
+name: $(Date:yyyy).$(Date:MM).$(Date:dd)$(Rev:.r)
+
+variables:
+  Solution.Name: 'BookSolution'
+  Client.Id: 'af1d092b-d37e-4534-b948-09798da38ad4'
+  Test.Connection.String: 'AuthType=ClientSecret;ClientId=$(Client.Id);ClientSecret=$(Client.Secret);url=https://orge286f072.crm11.dynamics.com'
+  UAT.Connection.String: 'AuthType=ClientSecret;ClientId=$(Client.Id);ClientSecret=$(Client.Secret);url=https://orgb76bb76a.crm11.dynamics.com'
+
+pool:
+  vmImage: windows-latest
+
+stages:
+  - stage: Artifact 
+    jobs:
+    - job: Artifact
+      steps:
+      - task: MSCRMToolInstaller@12
+        displayName: 'Power DevOps Tool Installer'
+      - task: MSCRMPackCMData@12
+        displayName: 'Pack data files'
+        inputs:
+          dataFile: '$(Build.ArtifactStagingDirectory)\$(Solution.Name)_data.zip'
+          extractFolder: '$(Build.SourcesDirectory)\$(Solution.Name)'
+          combineDataXmlFile: true
+      - publish: '$(Build.ArtifactStagingDirectory)'
+        displayName: 'Publish Pipeline Artifact'
+        artifact: $(Solution.Name)
+
+  - stage: Test
+    dependsOn: Artifact
+    jobs:
+      - deployment: ReleaseToTest
+        displayName: 'Release to Test'
+        environment: Test
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - task: MSCRMToolInstaller@12
+                  displayName: 'Power DevOps Tool Installer'
+                - task: MSCRMImportCMData@12
+                  displayName: 'Import Data'
+                  inputs:
+                    crmConnectionString: '$(Test.Connection.String)'
+                    dataFile: '$(Pipeline.Workspace)\$(Solution.Name)\$(Solution.Name)_data.zip'
+
+  - stage: UAT
+    dependsOn: Test
+    jobs:
+      - deployment: ReleaseToUAT
+        displayName: 'Release to UAT'
+        environment: UAT
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - task: MSCRMToolInstaller@12
+                  displayName: 'Power DevOps Tool Installer'
+                - task: MSCRMImportCMData@12
+                  displayName: 'Import Data'
+                  inputs:
+                    crmConnectionString: '$(UAT.Connection.String)'
+                    dataFile: '$(Pipeline.Workspace)\$(Solution.Name)\$(Solution.Name)_data.zip'
