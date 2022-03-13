@@ -1,0 +1,69 @@
+# Commit and CI pipeline
+# ######################
+# Make sure you:
+#   1) Update the YAML variables below
+#   2) In Variables create one for Client.Secret and check "keep it secret"
+
+trigger:
+- none
+
+name: $(Date:yyyy).$(Date:MM).$(Date:dd)$(Rev:.r)
+
+parameters:
+- name: workItemId
+  type: number
+  displayName: 'Work Item ID'
+- name: commitMessage
+  type: string
+  displayName: 'Commit Message'
+
+variables:
+  Solution.Name: 'BookSolution'
+  Tenant.Id: '1a7372b1-2274-4a47-9348-43d04e2d3be4'
+  Client.Id: 'af1d092b-d37e-4534-b948-09798da38ad4'
+  Connection.String: 'AuthType=ClientSecret;ClientId=$(Client.Id);ClientSecret=$(Client.Secret);url=https://org57a5db54.crm11.dynamics.com'
+  Git.Email: 'culturebmo@outlook.com'
+  Git.Name: 'Ben Morris'
+  Git.Message: '#${{ parameters.workItemId }} ${{ parameters.commitMessage }}'
+
+pool:
+  vmImage: windows-latest
+
+jobs:
+- job: CommitAndCI
+  displayName: 'Commit and CI'
+  steps:
+  - checkout: self
+    persistCredentials: True
+
+  - task: MSCRMToolInstaller@12
+    displayName: Power DevOps Tool Installer
+
+  - task: MSCRMExportCMData@12
+    displayName: Export Data
+    inputs:
+      crmConnectionString: '$(Connection.String)'
+      schemaFile: '$(Build.SourcesDirectory)\$(Solution.Name)_schema.xml'
+      dataFile: '$(Build.ArtifactStagingDirectory)\$(Solution.Name)_data.zip'
+
+  - task: MSCRMExtractCMData@12
+    displayName: Extract Data
+    inputs:
+      dataFile: '$(Build.ArtifactStagingDirectory)\$(Solution.Name)_data.zip'
+      extractFolder: '$(Build.SourcesDirectory)\$(Solution.Name)'
+      sortExtractedData: true
+
+  - task: CmdLine@2
+    displayName: Commit Files to Source
+    inputs:
+      script: |
+        echo commit all files except zip
+        git config user.email "$(Git.Email)"
+        git config user.name "$(Git.Name)"
+        git checkout main
+        git add --all -- :!*.zip :!*.log
+        git commit -m "$(Git.Message)"
+        echo push changes
+        git -c http.extraheader="AUTHORIZATION: bearer $(System.AccessToken)" push origin main
+        echo git status
+        git status
