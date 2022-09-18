@@ -1,0 +1,35 @@
+# Commit and CI pipeline
+# #########################################
+# 1) Update the solutionName variable below
+# #########################################
+
+trigger: none
+
+name: $(Date:yyyy).$(Date:MM).$(Date:dd)$(Rev:.r)
+
+pool:
+  vmImage: windows-latest
+
+# Reference to the Templates repo
+resources:
+  repositories:
+    - repository: templates
+      type: git
+      name: PowerPlatform/Templates
+
+# Parameters to be set at run time
+parameters:
+- name: workItemId
+  type: number
+  displayName: 'Work Item ID'
+- name: commitMessage
+  type: string
+  displayName: 'Commit Message'
+
+# Define solutionName in this file and pass with other parameters
+extends:
+  template: DataCommit.yml@templates
+  parameters:
+    solutionName: ComicsSolution
+    workItemId: ${{ parameters.workItemId }}
+    commitMessage: ${{ parameters.commitMessage }}

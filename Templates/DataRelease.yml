@@ -1,0 +1,50 @@
+# Data Release Template
+#######################
+
+parameters:
+- name: solutionName
+  type: string
+
+variables:
+- group: common-variable-group
+- name: Connection.String
+  value: 'AuthType=ClientSecret;ClientId=$(Client.Id);ClientSecret=$(Client.Secret);url=$(Url)'
+
+stages:
+  - stage: Artifact
+    displayName: Download Data
+    jobs:
+    - job: Artifact
+      steps:
+      - task: MSCRMToolInstaller@12
+        displayName: 'Power DevOps Tool Installer'
+      - task: MSCRMPackCMData@12
+        displayName: 'Pack data files'
+        inputs:
+          dataFile: '$(Build.ArtifactStagingDirectory)\${{ parameters.solutionName }}_data.zip'
+          extractFolder: '$(Build.SourcesDirectory)\${{ parameters.solutionName }}'
+          combineDataXmlFile: true
+      - publish: '$(Build.ArtifactStagingDirectory)'
+        displayName: 'Publish Pipeline Artifact'
+        artifact: ${{ parameters.solutionName }}
+
+  - stage: Test
+    displayName: Release to Test
+    dependsOn: Artifact
+    jobs:
+      - deployment: ReleaseToTest
+        displayName: 'Release to Test'
+        environment: Test
+        variables:
+        - group: test-variable-group
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - task: MSCRMToolInstaller@12
+                  displayName: 'Power DevOps Tool Installer'
+                - task: MSCRMImportCMData@12
+                  displayName: 'Import Data'
+                  inputs:
+                    crmConnectionString: '$(Connection.String)'
+                    dataFile: '$(Pipeline.Workspace)\${{ parameters.solutionName }}\${{ parameters.solutionName }}_data.zip'

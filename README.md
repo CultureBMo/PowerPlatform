@@ -1,6 +1,8 @@
 # PowerPlatform
-This repo is to demonstrate YAML pipelines for Build and Release Automation in Azure DevOps.
+This repo demonstrates YAML pipelines for Build and Release Automation of Power Platform solutions using Azure DevOps.
 
-The Solution folder contains YAML pipelines to Commit, Build and Release a Power Platform solution.
+The Basic Examples folder contains self-contained pipelines to Commit, Build and Release Power Platform solutions and reference data.
 
-The Data folder contains YAML pipelines to Commit and Release reference data for a Power Platform solution.
+The Templates folder contains templates that can be reused across many solutions. The Solution Using Templates folder and the Data Using Templates folder contain examples of how to call the templates.
+
+NB - in my Azure DevOps organization I have a repo for Templates, a repo for each Solution and a repo for each solution's Data. Update the resources sections to point to the location of your own templates.

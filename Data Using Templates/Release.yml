@@ -1,0 +1,32 @@
+# Release pipeline
+# #########################################
+# 1) Update the solutionName variable below
+# #########################################
+
+# Continuous Delivery to Test
+trigger:
+  branches:
+    include:
+    - main
+  paths:
+    exclude:
+    - '*.yml'
+    - '*.md'
+
+name: $(Date:yyyy).$(Date:MM).$(Date:dd)$(Rev:.r)
+
+pool:
+  vmImage: windows-latest
+
+# Reference to the Templates repo
+resources:
+  repositories:
+    - repository: templates
+      type: git
+      name: PowerPlatform/Templates
+
+# Set solutionName and pipelineNumber
+extends:
+  template: DataRelease.yml@templates
+  parameters:
+    solutionName: ComicsSolution

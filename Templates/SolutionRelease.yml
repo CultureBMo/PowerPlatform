@@ -1,0 +1,55 @@
+# Solution Release Template
+###########################
+
+parameters:
+- name: pipelineNumber
+  type: number
+- name: solutionName
+  type: string
+
+variables:
+- group: common-variable-group
+- name: Connection.String
+  value: 'AuthType=ClientSecret;ClientId=$(Client.Id);ClientSecret=$(Client.Secret);url=$(Url)'
+
+stages:
+  - stage: Artifact
+    displayName: Download Managed Solution
+    jobs:
+    - job: Artifact
+      steps:
+      - checkout: none
+      - task: DownloadPipelineArtifact@2
+        displayName: 'Download CI Artifact'
+        inputs:
+          buildType: 'specific'
+          project: '$(Project.Id)'
+          definition: '${{ parameters.pipelineNumber }}'
+          buildVersionToDownload: 'latest'
+          itemPattern: '**/*.zip'
+          targetPath: '$(Build.ArtifactStagingDirectory)'
+      - publish: '$(Build.ArtifactStagingDirectory)\${{ parameters.solutionName }}'
+        displayName: 'Publish Pipeline Artifact'
+        artifact: ${{ parameters.solutionName }}
+
+  - stage: Test
+    displayName: Release to Test
+    dependsOn: Artifact
+    jobs:
+      - deployment: ReleaseToTest
+        displayName: 'Release to Test'
+        environment: Test
+        variables:
+        - group: test-variable-group
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - task: MSCRMToolInstaller@12
+                  displayName: 'Power DevOps Tool Installer'
+                - task: MSCRMImportSolution@12
+                  displayName: 'Import Solution'
+                  inputs:
+                    crmConnectionString: '$(Connection.String)'
+                    solutionFile: '$(Pipeline.Workspace)\${{ parameters.solutionName }}\${{ parameters.solutionName }}_managed.zip'
+                    publishWorkflows: true

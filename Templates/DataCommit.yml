@@ -1,0 +1,57 @@
+# Data Commit Template
+######################
+
+parameters:
+- name: workItemId
+  type: number
+- name: commitMessage
+  type: string
+- name: solutionName
+  type: string
+
+variables:
+- group: common-variable-group
+- group: dev-variable-group
+- name: Git.Message
+  value: '#${{ parameters.workItemId }} ${{ parameters.commitMessage }}'
+- name: Connection.String
+  value: 'AuthType=ClientSecret;ClientId=$(Client.Id);ClientSecret=$(Client.Secret);url=$(Url)'
+
+jobs:
+- job: Commit
+  steps:
+  - checkout: self
+    fetchDepth: 0
+    persistCredentials: true
+
+  - task: MSCRMToolInstaller@12
+    displayName: Power DevOps Tool Installer
+  
+  - task: MSCRMExportCMData@12
+    displayName: Export Data
+    inputs:
+      crmConnectionString: '$(Connection.String)'
+      schemaFile: '$(Build.SourcesDirectory)\${{ parameters.solutionName }}_schema.xml'
+      dataFile: '$(Build.ArtifactStagingDirectory)\${{ parameters.solutionName }}_data.zip'
+
+  - task: MSCRMExtractCMData@12
+    displayName: Extract Data
+    inputs:
+      dataFile: '$(Build.ArtifactStagingDirectory)\${{ parameters.solutionName }}_data.zip'
+      extractFolder: '$(Build.SourcesDirectory)\${{ parameters.solutionName }}'
+      sortExtractedData: true
+
+  - task: CmdLine@2
+    displayName: Commit Data to Source
+    inputs:
+      script: |
+        echo commit all files except zip
+        git config user.email "$(Git.Email)"
+        git config user.name "$(Git.Name)"
+        git checkout main
+        git add --all -- :!*.zip :!*.log
+        git commit -m "$(Git.Message)"
+        echo push changes
+        git -c http.extraheader="AUTHORIZATION: bearer $(System.AccessToken)" push origin main
+        echo git status
+        git status
